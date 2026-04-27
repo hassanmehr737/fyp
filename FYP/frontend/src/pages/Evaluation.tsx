@@ -45,6 +45,8 @@ const Evaluation: React.FC = () => {
     };
 
     const handleSubmitAnswer = async (answer: string) => {
+        if (!currentUser || !session) return;
+
         const newAnswers = [...answers, { emailId: session.emails[currentIndex].id, userAnswer: answer }];
         setAnswers(newAnswers);
 
@@ -65,8 +67,10 @@ const Evaluation: React.FC = () => {
         } else {
             setLoading(true);
             try {
-                const result = await apiService.completeEvaluation(session.sessionId);
-                setComparison(result.data);
+                await apiService.completeEvaluation(session.sessionId);
+                // Refresh full comparison history to show improvement in results
+                const history = await apiService.compareEvaluationResults(currentUser.uid);
+                setComparison(history.data);
                 setStep('results');
             } catch (error) {
                 console.error('Failed to complete session:', error);
@@ -191,7 +195,7 @@ const Evaluation: React.FC = () => {
                     <div className="results-grid">
                         <div className="result-stat-card">
                             <span className="label">Latest Score</span>
-                            <span className="value">{comparison.postTest?.score || comparison.preTest?.score}%</span>
+                            <span className="value">{comparison.postTest?.score || comparison.preTest?.score || 0}%</span>
                         </div>
                         {comparison.improvement > 0 && (
                             <div className="result-stat-card highlight">

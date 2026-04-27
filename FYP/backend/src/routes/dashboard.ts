@@ -79,13 +79,28 @@ router.get('/stats/:userId', async (req: Request, res: Response) => {
         );
         const badges = badgeRows.flatMap(r => r.badges || []);
 
+        // Calculate current streak (global consecutive correct answers)
+        const recentAnswers = await query<{ is_correct: boolean }>(
+            `SELECT is_correct FROM training_answers WHERE user_id = $1 ORDER BY answered_at DESC LIMIT 50`,
+            [userId]
+        );
+
+        let currentStreak = 0;
+        for (const row of recentAnswers) {
+            if (row.is_correct) {
+                currentStreak++;
+            } else {
+                break;
+            }
+        }
+
         const stats = {
             totalAnalyses: parseInt(analysisRow?.count || '0'),
             phishingDetected: clMap['phishing'] || 0,
             legitimateConfirmed: clMap['legitimate'] || 0,
             trainingModulesCompleted: parseInt(trainingRow?.count || '0'),
             overallAccuracy,
-            currentStreak: 0,
+            currentStreak,
             badges,
             weeklyProgress: weeklyProgress.length > 0 ? weeklyProgress : [
                 { week: 'Week 1', correctAnswers: 0, totalAnswers: 0, accuracy: 0 },

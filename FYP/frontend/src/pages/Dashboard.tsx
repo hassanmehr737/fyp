@@ -71,7 +71,7 @@ const Dashboard: React.FC = () => {
                     value={stats?.currentStreak || 0}
                     icon={Award}
                     color="#f59e0b"
-                    description="Daily login milestone"
+                    description="Consecutive correct answers"
                 />
             </div>
 

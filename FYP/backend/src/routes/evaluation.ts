@@ -109,7 +109,10 @@ router.post('/complete', async (req: Request, res: Response) => {
         if (!session) return res.status(404).json({ success: false, error: 'Test session not found' });
 
         const completedAt = new Date();
-        const score = Math.round((session.correctAnswers / session.totalQuestions) * 100);
+        // Fix: Use snake_case properties from the DB result
+        const total = session.total_questions || session.totalQuestions || 0;
+        const correct = session.correct_answers || session.correctAnswers || 0;
+        const score = total > 0 ? Math.round((correct / total) * 100) : 0;
 
         await query('UPDATE test_sessions SET completed_at = $1, score = $2 WHERE id = $3', [completedAt, score, sessionId]);
 
@@ -129,14 +132,15 @@ router.post('/complete', async (req: Request, res: Response) => {
                 sessionId: session.id,
                 type: session.type,
                 score,
-                correctAnswers: session.correctAnswers,
-                totalQuestions: session.totalQuestions,
+                correctAnswers: correct,
+                totalQuestions: total,
                 metrics,
                 completedAt,
-                duration: completedAt.getTime() - new Date(session.startedAt).getTime()
+                duration: completedAt.getTime() - new Date(session.started_at || session.startedAt).getTime()
             }
         });
     } catch (error: any) {
+        console.error('Complete evaluation error:', error.message);
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
@@ -148,27 +152,33 @@ router.get('/compare/:userId', async (req: Request, res: Response) => {
     const userId = req.user!.uid;
 
     try {
-        const preTest = await queryOne<TestSession>(
-            'SELECT score, correct_answers, total_questions FROM test_sessions WHERE user_id = $1 AND type = $2 AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 1',
+        const preTest = await queryOne<any>(
+            `SELECT score, correct_answers AS "correctAnswers", total_questions AS "totalQuestions", completed_at AS "date" 
+             FROM test_sessions 
+             WHERE user_id = $1 AND type = $2 AND completed_at IS NOT NULL 
+             ORDER BY completed_at DESC LIMIT 1`,
             [userId, 'pre-test']
         );
-        const postTest = await queryOne<TestSession>(
-            'SELECT score, correct_answers, total_questions FROM test_sessions WHERE user_id = $1 AND type = $2 AND completed_at IS NOT NULL ORDER BY completed_at DESC LIMIT 1',
+        const postTest = await queryOne<any>(
+            `SELECT score, correct_answers AS "correctAnswers", total_questions AS "totalQuestions", completed_at AS "date" 
+             FROM test_sessions 
+             WHERE user_id = $1 AND type = $2 AND completed_at IS NOT NULL 
+             ORDER BY completed_at DESC LIMIT 1`,
             [userId, 'post-test']
         );
 
-        if (!preTest || !postTest) {
+        if (!preTest) {
             return res.json({
                 success: true,
                 data: {
                     available: false,
-                    preTest: preTest || null,
-                    postTest: postTest || null
+                    preTest: null,
+                    postTest: null
                 }
             });
         }
 
-        const improvement = postTest.score - preTest.score;
+        const improvement = postTest ? (postTest.score - preTest.score) : 0;
 
         res.json({
             success: true,

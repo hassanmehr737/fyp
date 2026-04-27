@@ -9,6 +9,7 @@ import TrainingExercise from './pages/TrainingExercise';
 import Evaluation from './pages/Evaluation';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './App.css';
 
@@ -31,6 +32,7 @@ function AppRoutes() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
 
             {/* Protected routes — must be logged in */}
             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
